@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Sanal ortam
+venv/
+
+# MacOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Veritabanı
+database/*.db
