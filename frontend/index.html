@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Akıllı Sınıf Dijital İkizi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f5f5f5;
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    .kartlar {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 30px;
+    }
+
+    .kart {
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 15px 20px;
+        text-align: center;
+        min-width: 130px;
+    }
+
+    .kart h3 {
+        margin: 0 0 5px 0;
+        font-size: 14px;
+        color: #555;
+    }
+
+    .kart p {
+        margin: 0;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    .grafikler {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+    }
+
+    canvas {
+        background-color: white;
+        border-radius: 8px;
+        padding: 10px;
+        max-width: 480px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Akıllı Sınıf Dijital İkizi</h1>
+
+<!-- Anlık değerler -->
+<div class="kartlar">
+    <div class="kart">
+        <h3>CO2 (ppm)</h3>
+        <p id="co2Deger">--</p>
+    </div>
+    <div class="kart">
+        <h3>Sıcaklık (°C)</h3>
+        <p id="sicaklikDeger">--</p>
+    </div>
+    <div class="kart">
+        <h3>Akım (A)</h3>
+        <p id="akimDeger">--</p>
+    </div>
+    <div class="kart">
+        <h3>Kişi Sayısı</h3>
+        <p id="kisiDeger">--</p>
+    </div>
+    <div class="kart">
+        <h3>Çöp Kutusu</h3>
+        <p id="copDeger">--</p>
+    </div>
+</div>
+
+<!-- Grafikler -->
+<div class="grafikler">
+    <canvas id="co2Grafik" width="400" height="250"></canvas>
+    <canvas id="sicaklikGrafik" width="400" height="250"></canvas>
+    <canvas id="enerjiGrafik" width="400" height="250"></canvas>
+</div>
+
+<script>
+    // Grafikleri oluştur (başlangıçta boş)
+    const co2Chart = new Chart(document.getElementById("co2Grafik"), {
+        type: "line",
+        data: { labels: [], datasets: [{ label: "CO2 (ppm)", data: [], borderColor: "green" }] }
+    });
+
+    const sicaklikChart = new Chart(document.getElementById("sicaklikGrafik"), {
+        type: "line",
+        data: { labels: [], datasets: [{ label: "Sıcaklık (°C)", data: [], borderColor: "orange" }] }
+    });
+
+    const enerjiChart = new Chart(document.getElementById("enerjiGrafik"), {
+        type: "line",
+        data: { labels: [], datasets: [{ label: "Enerji (Wh)", data: [], borderColor: "blue" }] }
+    });
+
+    // En son ölçümü çekip kartlara yazar
+    function kartlariGuncelle() {
+        fetch("/api/data/latest")
+            .then(response => response.json())
+            .then(veri => {
+                document.getElementById("co2Deger").innerText = veri.co2.toFixed(0);
+                document.getElementById("sicaklikDeger").innerText = veri.temperature.toFixed(1);
+                document.getElementById("akimDeger").innerText = veri.current.toFixed(2);
+                document.getElementById("kisiDeger").innerText = veri.people;
+                document.getElementById("copDeger").innerText = veri.trash_count + " / 40";
+            });
+    }
+
+    // Son 30 kaydı çekip grafikleri günceller
+    function grafikleriGuncelle() {
+        fetch("/api/data?limit=30")
+            .then(response => response.json())
+            .then(veri => {
+                // veri zaten zamana göre azalan sırada geliyor, grafikte ters çevirip kullanıyoruz
+                veri.reverse();
+
+                const zamanlar = veri.map(v => v.time.toFixed(0));
+
+                co2Chart.data.labels = zamanlar;
+                co2Chart.data.datasets[0].data = veri.map(v => v.co2);
+                co2Chart.update();
+
+                sicaklikChart.data.labels = zamanlar;
+                sicaklikChart.data.datasets[0].data = veri.map(v => v.temperature);
+                sicaklikChart.update();
+
+                enerjiChart.data.labels = zamanlar;
+                enerjiChart.data.datasets[0].data = veri.map(v => v.energy);
+                enerjiChart.update();
+            });
+    }
+
+    // Sayfa açılınca bir kere çalıştır
+    kartlariGuncelle();
+    grafikleriGuncelle();
+
+    // Her 5 saniyede bir tekrar çalıştır (canlı takip için)
+    setInterval(kartlariGuncelle, 5000);
+    setInterval(grafikleriGuncelle, 5000);
+</script>
+
+</body>
+</html>
